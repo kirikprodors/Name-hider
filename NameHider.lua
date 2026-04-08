@@ -17,7 +17,7 @@ MainButton.Font = Enum.Font.GothamBold
 MainButton.Text = "Скрыть имена"
 MainButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 MainButton.TextSize = 14.0
-MainButton.Draggable = true -- Включаем стандартное перетаскивание
+MainButton.Draggable = true 
 
 UICorner.Parent = MainButton
 
@@ -35,44 +35,51 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 50)
 CloseCorner.Parent = CloseButton
 
--- Переменные состояния
+-- Состояние
 local namesHidden = false
 
--- Функция переключения видимости имен
+-- Функция для скрытия ника у конкретного игрока
+local function setCharacterNameVisible(character, visible)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        -- HealthDisplayType тоже убираем, чтобы полоска хп не палила игрока
+        humanoid.DisplayDistanceType = visible and Enum.HumanoidDisplayDistanceType.Viewer or Enum.HumanoidDisplayDistanceType.None
+        humanoid.HealthDisplayType = visible and Enum.HumanoidHealthDisplayType.DisplayWhenDamaged or Enum.HumanoidHealthDisplayType.AlwaysOff
+    end
+end
+
+-- Основная функция переключения
 local function toggleNames()
     namesHidden = not namesHidden
+    MainButton.Text = namesHidden and "Показать имена" or "Скрыть имена"
+    MainButton.BackgroundColor3 = namesHidden and Color3.fromRGB(70, 150, 70) or Color3.fromRGB(45, 45, 45)
     
-    if namesHidden then
-        MainButton.Text = "Показать имена"
-        MainButton.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
-    else
-        MainButton.Text = "Скрыть имена"
-        MainButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    end
-
     for _, player in pairs(game:GetService("Players"):GetPlayers()) do
-        if player.Character and player.Character:FindFirstChild("Head") then
-            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.DisplayDistanceType = namesHidden and Enum.HumanoidDisplayDistanceType.None or Enum.HumanoidDisplayDistanceType.Viewer
-            end
+        if player.Character then
+            setCharacterNameVisible(player.Character, not namesHidden)
         end
     end
 end
 
--- Обработка новых игроков
-game:GetService("Players").PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(char)
+-- Цикл авто-обновления (работает каждые 2 секунды)
+task.spawn(function()
+    while task.wait(2) do
         if namesHidden then
-            local hum = char:WaitForChild("Humanoid")
-            hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+            for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+                if player.Character then
+                    setCharacterNameVisible(player.Character, false)
+                end
+            end
         end
-    end)
+    end
 end)
 
--- События кнопок
 MainButton.MouseButton1Click:Connect(toggleNames)
 
 CloseButton.MouseButton1Click:Connect(function()
+    namesHidden = false
+    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+        if player.Character then setCharacterNameVisible(player.Character, true) end
+    end
     ScreenGui:Destroy()
 end)
